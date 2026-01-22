@@ -18,25 +18,79 @@ class ResultExporter:
         pass
 
     @staticmethod
-    def _encode_field_name(field_name: str) -> str:
+    def _encode_field_name(field_name: str, prefix: str = 't_') -> str:
         """
         编码字段名为 ASCII 兼容格式（用于 Shapefile）
 
+        Shapefile 限制：字段名最长 10 字符，只支持 ASCII
+
         Args:
             field_name: 原始字段名
+            prefix: 字段前缀（默认 't_' 以节省空间）
 
         Returns:
-            编码后的字段名
+            编码后的字段名（最长 10 字符）
         """
-        # 如果已经是 ASCII，直接返回
+        # 完整字段名（带前缀）
+        full_name = f"{prefix}{field_name}"
+
+        # 如果已经是 ASCII 且长度 <= 10，直接返回
         try:
-            field_name.encode('ascii')
-            return field_name
+            full_name.encode('ascii')
+            if len(full_name) <= 10:
+                return full_name
         except UnicodeEncodeError:
-            # 包含非 ASCII 字符，进行 URL 编码
-            encoded = urllib.parse.quote_plus(field_name)
-            # 截断到 10 个字符（Shapefile 限制）
-            return encoded[:10] if len(encoded) > 10 else encoded
+            pass
+
+        # 需要编码的情况：使用简短的前缀 + 拼音/编码
+        # 常见中文到简短拼音映射（3-4个字符）
+        pinyin_map = {
+            '实施年': 'shinian',    # 实施年 -> shinian
+            '建设': 'jian',         # 建设 -> jian
+            '项目': 'xiang',         # 项目 -> xiang
+            '名称': 'ming',          # 名称 -> ming
+            '类型': 'typ',           # 类型 -> typ
+            '编号': 'no',            # 编号 -> no
+            '单位': 'unit',          # 单位 -> unit
+            '流域': 'luyu',          # 流域 -> luyu
+            '河流': 'riv',           # 河流 -> riv
+            '面积': 'area',          # 面积 -> area
+            '长度': 'len',           # 长度 -> len
+            '省份': 'prov',          # 省份 -> prov
+            '城市': 'city',          # 城市 -> city
+            '区县': 'cnty',          # 区县 -> cnty
+            '地址': 'addr',           # 地址 -> addr
+            '位置': 'loc',           # 位置 -> loc
+            '坐标': 'crd',            # 坐标 -> crd
+            '时间': 'time',          # 时间 -> time
+            '日期': 'date',          # 日期 -> date
+            '金额': 'amt',            # 金额 -> amt
+            '数量': 'qty',            # 数量 -> qty
+            '年份': 'yr',             # 年份 -> yr
+            '月份': 'mo',             # 月份 -> mo
+            '日期': 'dt',             # 日期 -> dt
+        }
+
+        # 检查是否有映射
+        if field_name in pinyin_map:
+            mapped = pinyin_map[field_name]
+            result = f"{prefix}{mapped}"
+            # 确保不超过 10 字符
+            return result[:10] if len(result) > 10 else result
+
+        # 如果没有映射，使用更激进的编码
+        # 使用 unicode 转换 + 简化
+        import unicodedata
+        simplified = unicodedata.normalize(field_name, 'NFKD').encode('ascii', 'ignore').decode('ascii')
+        # 移除非字母数字字符
+        cleaned = ''.join(c if c.isalnum() else '_' for c in simplified)
+        result = f"{prefix}{cleaned}"[:10]
+
+        # 如果结果太短，至少保留前缀
+        if len(result) < 3:
+            result = f"{prefix}cnv"[:10]  # conventional
+
+        return result
 
     def export_to_shapefile(
         self,
@@ -67,11 +121,10 @@ class ResultExporter:
             for idx, result in enumerate(results):
                 # 找到对应的源要素（按顺序）
                 if idx < len(output_gdf):
-                    # 添加目标属性（带前缀）
+                    # 添加目标属性（使用短前缀以节省空间）
                     for key, value in result['target_attributes'].items():
-                        # 编码字段名为 ASCII 兼容格式
-                        encoded_key = self._encode_field_name(key)
-                        col_name = f"{field_prefix}{encoded_key}"
+                        # 使用短前缀 't_' 而不是 'target_' 以节省空间
+                        col_name = self._encode_field_name(key, prefix='t_')
 
                         if col_name not in output_gdf.columns:
                             output_gdf[col_name] = None
