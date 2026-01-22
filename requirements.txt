@@ -1,0 +1,20 @@
+# GUI框架
+PyQt5==5.15.9
+PyQt5-sip==12.13.0
+
+# 空间数据处理
+geopandas==0.14.1
+shapely==2.0.2
+fiona==1.9.5
+pyproj==3.6.1
+
+# 数据处理
+pandas==2.1.0
+numpy==1.26.0
+
+# 可视化
+matplotlib==3.8.0
+
+# 测试工具
+pytest==7.4.3
+pytest-cov==4.1.0
