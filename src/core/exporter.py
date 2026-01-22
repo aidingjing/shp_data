@@ -81,7 +81,7 @@ class ResultExporter:
         # 如果没有映射，使用更激进的编码
         # 使用 unicode 转换 + 简化
         import unicodedata
-        simplified = unicodedata.normalize(field_name, 'NFKD').encode('ascii', 'ignore').decode('ascii')
+        simplified = unicodedata.normalize('NFKD', field_name).encode('ascii', 'ignore').decode('ascii')
         # 移除非字母数字字符
         cleaned = ''.join(c if c.isalnum() else '_' for c in simplified)
         result = f"{prefix}{cleaned}"[:10]
