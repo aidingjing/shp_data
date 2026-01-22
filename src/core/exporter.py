@@ -126,6 +126,10 @@ class ResultExporter:
                         # 使用短前缀 't_' 而不是 'target_' 以节省空间
                         col_name = self._encode_field_name(key, prefix='t_')
 
+                        # 调试信息（可以删除）
+                        if col_name == key:  # 仍然是中文名，编码失败
+                            print(f"⚠️ 警告: 字段 '{key}' 未能正确编码")
+
                         if col_name not in output_gdf.columns:
                             output_gdf[col_name] = None
                         output_gdf.at[idx, col_name] = value
