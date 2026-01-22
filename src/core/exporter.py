@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Tuple
 import geopandas as gpd
 import pandas as pd
 import os
+import urllib.parse
 
 
 class ResultExporter:
@@ -15,6 +16,27 @@ class ResultExporter:
     def __init__(self):
         """初始化导出器"""
         pass
+
+    @staticmethod
+    def _encode_field_name(field_name: str) -> str:
+        """
+        编码字段名为 ASCII 兼容格式（用于 Shapefile）
+
+        Args:
+            field_name: 原始字段名
+
+        Returns:
+            编码后的字段名
+        """
+        # 如果已经是 ASCII，直接返回
+        try:
+            field_name.encode('ascii')
+            return field_name
+        except UnicodeEncodeError:
+            # 包含非 ASCII 字符，进行 URL 编码
+            encoded = urllib.parse.quote_plus(field_name)
+            # 截断到 10 个字符（Shapefile 限制）
+            return encoded[:10] if len(encoded) > 10 else encoded
 
     def export_to_shapefile(
         self,
@@ -47,7 +69,10 @@ class ResultExporter:
                 if idx < len(output_gdf):
                     # 添加目标属性（带前缀）
                     for key, value in result['target_attributes'].items():
-                        col_name = f"{field_prefix}{key}"
+                        # 编码字段名为 ASCII 兼容格式
+                        encoded_key = self._encode_field_name(key)
+                        col_name = f"{field_prefix}{encoded_key}"
+
                         if col_name not in output_gdf.columns:
                             output_gdf[col_name] = None
                         output_gdf.at[idx, col_name] = value
